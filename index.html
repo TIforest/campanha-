@@ -774,7 +774,7 @@ document.documentElement.classList.add('locked');
   /* transforma "joao.silva" ou "joao.silva@forest.ind.br" em "Joao Silva" */
   function getDisplayName(){
     var id = getTrackId();
-    if(!id || id === 'sem-id' || id === 'teste') return 'usuario';
+    if(!id || id === 'sem-id') return 'usuario';
     var local = id.split('@')[0];
     var pretty = local
       .replace(/[._-]+/g, ' ')
@@ -835,27 +835,36 @@ document.documentElement.classList.add('locked');
   var reachedBottom = false;
 
   function onScroll(){
+    if(!html.classList.contains('unlocked')) return; // ignora enquanto o gate estiver fechado
+
     var doc = document.documentElement;
     var scrollTop = window.scrollY || doc.scrollTop;
     var max = doc.scrollHeight - doc.clientHeight;
     var pct = max > 0 ? (scrollTop / max) * 100 : 100;
-    progressBar.style.width = Math.min(pct,100) + '%';
-
-    if(pct > 96 && !reachedBottom){
-      reachedBottom = true;
-      unlockFinish();
-    }
+    progressBar.style.width = Math.min(pct,100) + '%'; // só visual, não libera mais nada
   }
   window.addEventListener('scroll', onScroll, {passive:true});
-  onScroll();
 
   function unlockFinish(){
-    trackEvent('abriu_parabens'); // 2º clique registrado aqui (chegou ao final)
+    if(reachedBottom) return;
+    reachedBottom = true;
+    trackEvent('abriu_parabens'); // 2º clique registrado aqui
     finishBtn.disabled = false;
     finishBtn.classList.add('active');
     finishHint.textContent = 'obrigado por ler até o fim ✔';
     var note = document.getElementById('lock-note');
     if(note){ note.style.opacity = '0'; setTimeout(function(){ note.style.display='none'; }, 400); }
+  }
+
+  /* liga um "ouvinte" de clique único: assim que a pessoa clicar em
+     qualquer lugar da página (já com o gate aberto), libera o parabéns */
+  function armSecondClick(){
+    function handler(e){
+      if(reachedBottom) return;
+      document.removeEventListener('click', handler);
+      unlockFinish();
+    }
+    document.addEventListener('click', handler);
   }
 
   var revealEls = document.querySelectorAll('.reveal, .tip');
@@ -935,6 +944,7 @@ document.documentElement.classList.add('locked');
         setTimeout(function(){ html.classList.add('gate-hidden'); }, 550);
         window.scrollTo(0,0);
         startPageAnimations();
+        armSecondClick(); // a partir daqui, o próximo clique libera o parabéns
       });
   }
 
