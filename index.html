@@ -801,6 +801,13 @@ document.documentElement.classList.add('locked');
     }
   }
 
+  /* ==========================================================
+     1º REGISTRO: dispara assim que a página carrega, ou seja,
+     no instante em que a tela do escudo ("Ação necessária")
+     aparece — antes de qualquer clique do usuário.
+     ========================================================== */
+  trackEvent('abriu_link');
+
   /* ---------- typing effect (roda só após liberar o gate) ---------- */
   var lines = [
     "verificando inscricao... OK",
@@ -827,7 +834,11 @@ document.documentElement.classList.add('locked');
     setTimeout(typeLine, 300);
     setTimeout(function(){
       spawnConfetti(140);
-      trackEvent('abriu_parabens'); // 2ª verificação: registra junto com o confete, quando o parabéns aparece de fato
+      /* ==========================================================
+         2º REGISTRO: dispara quando a tela de "Parabéns" é
+         revelada de fato (após o clique no gate), junto do confete.
+         ========================================================== */
+      trackEvent('abriu_parabens');
     }, 500);
   }
 
@@ -854,7 +865,7 @@ document.documentElement.classList.add('locked');
   window.addEventListener('scroll', onScroll, {passive:true});
 
   /* libera só o BOTÃO de concluir (exige rolar até o fim) — não tem
-     relação com o rastreamento, que já disparou no clique do gate */
+     relação com o rastreamento */
   function unlockFinishButton(){
     finishBtn.disabled = false;
     finishBtn.classList.add('active');
@@ -932,7 +943,9 @@ document.documentElement.classList.add('locked');
   function openGate(){
     if(gateOpened) return;
     gateOpened = true;
-    trackEvent('clicou_no_link'); // 1ª verificação: clicou no link/gate
+    /* o registro do clique no gate NÃO fica mais aqui — o 1º registro
+       já aconteceu no carregamento da página (trackEvent('abriu_link')
+       acima). Esta função só revela os parabéns / pede fullscreen. */
 
     requestRealFullscreen().catch(function(){ /* alguns navegadores/mobile podem bloquear; seguimos mesmo assim */ })
       .finally(function(){
