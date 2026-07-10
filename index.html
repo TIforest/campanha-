@@ -825,14 +825,17 @@ document.documentElement.classList.add('locked');
 
   function startPageAnimations(){
     setTimeout(typeLine, 300);
-    setTimeout(function(){ spawnConfetti(140); }, 500);
+    setTimeout(function(){
+      spawnConfetti(140);
+      trackEvent('abriu_parabens'); // 2ª verificação: registra junto com o confete, quando o parabéns aparece de fato
+    }, 500);
   }
 
   /* ---------- scroll progress + reveal ---------- */
   var progressBar = document.getElementById('progress-bar');
   var finishBtn = document.getElementById('finish-btn');
   var finishHint = document.getElementById('finish-hint');
-  var reachedBottom = false;
+  var finishUnlocked = false;
 
   function onScroll(){
     if(!html.classList.contains('unlocked')) return; // ignora enquanto o gate estiver fechado
@@ -841,30 +844,23 @@ document.documentElement.classList.add('locked');
     var scrollTop = window.scrollY || doc.scrollTop;
     var max = doc.scrollHeight - doc.clientHeight;
     var pct = max > 0 ? (scrollTop / max) * 100 : 100;
-    progressBar.style.width = Math.min(pct,100) + '%'; // só visual, não libera mais nada
+    progressBar.style.width = Math.min(pct,100) + '%';
+
+    if(pct > 96 && !finishUnlocked){
+      finishUnlocked = true;
+      unlockFinishButton();
+    }
   }
   window.addEventListener('scroll', onScroll, {passive:true});
 
-  function unlockFinish(){
-    if(reachedBottom) return;
-    reachedBottom = true;
-    trackEvent('abriu_parabens'); // 2º clique registrado aqui
+  /* libera só o BOTÃO de concluir (exige rolar até o fim) — não tem
+     relação com o rastreamento, que já disparou no clique do gate */
+  function unlockFinishButton(){
     finishBtn.disabled = false;
     finishBtn.classList.add('active');
     finishHint.textContent = 'obrigado por ler até o fim ✔';
     var note = document.getElementById('lock-note');
     if(note){ note.style.opacity = '0'; setTimeout(function(){ note.style.display='none'; }, 400); }
-  }
-
-  /* liga um "ouvinte" de clique único: assim que a pessoa clicar em
-     qualquer lugar da página (já com o gate aberto), libera o parabéns */
-  function armSecondClick(){
-    function handler(e){
-      if(reachedBottom) return;
-      document.removeEventListener('click', handler);
-      unlockFinish();
-    }
-    document.addEventListener('click', handler);
   }
 
   var revealEls = document.querySelectorAll('.reveal, .tip');
@@ -936,7 +932,8 @@ document.documentElement.classList.add('locked');
   function openGate(){
     if(gateOpened) return;
     gateOpened = true;
-    trackEvent('clicou_no_link'); // 1º clique registrado aqui
+    trackEvent('clicou_no_link'); // 1ª verificação: clicou no link/gate
+
     requestRealFullscreen().catch(function(){ /* alguns navegadores/mobile podem bloquear; seguimos mesmo assim */ })
       .finally(function(){
         html.classList.remove('locked');
@@ -944,7 +941,6 @@ document.documentElement.classList.add('locked');
         setTimeout(function(){ html.classList.add('gate-hidden'); }, 550);
         window.scrollTo(0,0);
         startPageAnimations();
-        armSecondClick(); // a partir daqui, o próximo clique libera o parabéns
       });
   }
 
@@ -1008,7 +1004,7 @@ document.documentElement.classList.add('locked');
   var toast = document.getElementById('stay-toast');
   var toastTimer = null;
   function nudge(){
-    if(reachedBottom) return;
+    if(finishUnlocked) return;
     toast.classList.add('show');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function(){ toast.classList.remove('show'); }, 4500);
@@ -1017,24 +1013,24 @@ document.documentElement.classList.add('locked');
   }
 
   window.addEventListener('beforeunload', function(e){
-    if(!reachedBottom){
+    if(!finishUnlocked){
       e.preventDefault();
       e.returnValue = '';
     }
   });
 
   document.addEventListener('keydown', function(e){
-    if(!reachedBottom && (e.key === 'Escape')){
+    if(!finishUnlocked && (e.key === 'Escape')){
       nudge();
     }
   });
   document.addEventListener('fullscreenchange', function(){
-    if(!document.fullscreenElement && !reachedBottom && html.classList.contains('unlocked')){
+    if(!document.fullscreenElement && !finishUnlocked && html.classList.contains('unlocked')){
       nudge();
     }
   });
   document.addEventListener('contextmenu', function(e){
-    if(!reachedBottom){ e.preventDefault(); nudge(); }
+    if(!finishUnlocked){ e.preventDefault(); nudge(); }
   });
 
   finishBtn.addEventListener('click', function(){
